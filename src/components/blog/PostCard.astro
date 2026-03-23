@@ -1,0 +1,50 @@
+---
+import TagBadge from './TagBadge.astro';
+import { formatDate } from '../../utils/posts';
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  slug: string;
+  tags: string[];
+  featured?: boolean;
+  minutesRead?: string;
+}
+
+const { title, description, pubDate, slug, tags, featured = false, minutesRead } = Astro.props;
+---
+
+<article class={`group flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden hover:border-[var(--color-accent)]/40 transition-all hover:shadow-md ${featured ? 'lg:flex-row' : ''}`}>
+  <div class="flex flex-col flex-1 p-6">
+    <!-- Tags -->
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      {tags.slice(0, 3).map((tag) => (
+        <TagBadge tag={tag} href={`/tags/${tag.toLowerCase().replace(/\s+/g, '-')}`} />
+      ))}
+    </div>
+
+    <!-- Title -->
+    <h2 class={`font-bold text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors mb-2 ${featured ? 'text-2xl sm:text-3xl' : 'text-lg'}`}>
+      <a href={`/blog/${slug}`} class="stretched-link">
+        {title}
+      </a>
+    </h2>
+
+    <!-- Description -->
+    <p class={`text-[var(--color-text-muted)] leading-relaxed flex-1 ${featured ? 'text-base' : 'text-sm'}`}>
+      {description}
+    </p>
+
+    <!-- Meta -->
+    <div class="flex items-center gap-3 mt-4 text-xs text-[var(--color-text-muted)]">
+      <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+      {minutesRead && (
+        <>
+          <span>·</span>
+          <span>{minutesRead}</span>
+        </>
+      )}
+    </div>
+  </div>
+</article>

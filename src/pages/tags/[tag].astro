@@ -1,0 +1,53 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/blog/PostCard.astro';
+import { getSlug } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const tagSet = new Set<string>();
+  posts.forEach((p) => p.data.tags.forEach((t) => tagSet.add(t)));
+
+  return Array.from(tagSet).map((tag) => ({
+    params: { tag: tag.toLowerCase().replace(/\s+/g, '-') },
+    props: {
+      tag,
+      posts: posts
+        .filter((p) => p.data.tags.includes(tag))
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+    },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout
+  title={`#${tag} — Wesley.dev`}
+  description={`Posts tagged with ${tag} on Wesley.dev`}
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+    <header class="mb-8">
+      <a href="/blog" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] mb-3 inline-block">
+        ← All posts
+      </a>
+      <h1 class="text-3xl font-bold text-[var(--color-text)]">
+        Tagged: <span class="text-[var(--color-accent)]">{tag}</span>
+      </h1>
+      <p class="text-[var(--color-text-muted)] mt-1">{posts.length} post{posts.length !== 1 ? 's' : ''}</p>
+    </header>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {posts.map((post) => (
+        <PostCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          slug={getSlug(post.id)}
+          tags={post.data.tags}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

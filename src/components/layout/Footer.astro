@@ -1,0 +1,16 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-[var(--color-border)] mt-20">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <p class="text-sm text-[var(--color-text-muted)]">
+      © {year} Wesley Sum. Built with <a href="https://astro.build" class="text-[var(--color-accent)] hover:underline">Astro</a>.
+    </p>
+    <div class="flex items-center gap-4">
+      <a href="https://github.com/wesleysum" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">GitHub</a>
+      <a href="https://linkedin.com/in/wesleysum" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">LinkedIn</a>
+      <a href="https://x.com/wesleysum" class="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">X</a>
+    </div>
+  </div>
+</footer>

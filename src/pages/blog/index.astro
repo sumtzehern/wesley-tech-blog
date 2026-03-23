@@ -1,0 +1,52 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/blog/PostCard.astro';
+import { getSortedPosts, getAllTags, getSlug } from '../../utils/posts';
+
+const posts = await getSortedPosts();
+const tags = getAllTags(posts);
+---
+
+<BaseLayout
+  title="Blog — Wesley.dev"
+  description="All posts from Wesley Sum. Deep-dives on ML, systems, and software engineering."
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold text-[var(--color-text)] mb-2">All Posts</h1>
+      <p class="text-[var(--color-text-muted)]">{posts.length} article{posts.length !== 1 ? 's' : ''}</p>
+    </header>
+
+    <!-- Tag filter -->
+    {tags.length > 0 && (
+      <div class="flex flex-wrap gap-2 mb-8">
+        {tags.map((tag) => (
+          <a
+            href={`/tags/${tag.toLowerCase().replace(/\s+/g, '-')}`}
+            class="px-3 py-1 rounded-full text-xs font-medium border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+          >
+            {tag}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Posts grid -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {posts.map((post) => (
+        <PostCard
+          title={post.data.title}
+          description={post.data.description}
+          pubDate={post.data.pubDate}
+          slug={getSlug(post.id)}
+          tags={post.data.tags}
+          featured={post.data.featured}
+        />
+      ))}
+    </div>
+
+    {posts.length === 0 && (
+      <p class="text-center text-[var(--color-text-muted)] py-20">No posts yet. Check back soon!</p>
+    )}
+  </div>
+</BaseLayout>

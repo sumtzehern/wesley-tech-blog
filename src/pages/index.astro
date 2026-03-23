@@ -1,0 +1,89 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/blog/PostCard.astro';
+import { getSortedPosts, getFeaturedPosts, getSlug } from '../utils/posts';
+
+const allPosts = await getSortedPosts();
+const featuredPosts = await getFeaturedPosts();
+const featured = featuredPosts[0];
+const recentPosts = allPosts.filter((p) => p.id !== featured?.id).slice(0, 6);
+---
+
+<BaseLayout
+  title="Wesley.dev — Technical Blog"
+  description="Deep-dives, tutorials, and engineering insights from Wesley Sum."
+>
+  <!-- Hero -->
+  <section class="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold text-[var(--color-accent)] uppercase tracking-wider mb-3">
+        Technical Blog
+      </p>
+      <h1 class="text-4xl sm:text-5xl font-bold text-[var(--color-text)] leading-tight mb-4">
+        Code deep-dives,<br />
+        <span class="text-[var(--color-accent)]">actually explained.</span>
+      </h1>
+      <p class="text-lg text-[var(--color-text-muted)] leading-relaxed mb-8">
+        I write about machine learning, systems programming, and the software engineering
+        craft — with real code, real trade-offs, and no hand-waving.
+      </p>
+      <div class="flex gap-3">
+        <a
+          href="/blog"
+          class="px-5 py-2.5 rounded-lg bg-[var(--color-accent)] text-white font-medium hover:bg-[var(--color-accent-hover)] transition-colors text-sm"
+        >
+          Browse all posts
+        </a>
+        <a
+          href="/about"
+          class="px-5 py-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-bg-secondary)] transition-colors text-sm"
+        >
+          About me
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured post -->
+  {featured && (
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 mb-12">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+        Featured post
+      </h2>
+      <PostCard
+        title={featured.data.title}
+        description={featured.data.description}
+        pubDate={featured.data.pubDate}
+        slug={getSlug(featured.id)}
+        tags={featured.data.tags}
+        featured={true}
+      />
+    </section>
+  )}
+
+  <!-- Recent posts grid -->
+  {recentPosts.length > 0 && (
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+        Recent posts
+      </h2>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {recentPosts.map((post) => (
+          <PostCard
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            slug={getSlug(post.id)}
+            tags={post.data.tags}
+          />
+        ))}
+      </div>
+    </section>
+  )}
+
+  {allPosts.length === 0 && (
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 py-20 text-center">
+      <p class="text-[var(--color-text-muted)]">Posts coming soon…</p>
+    </section>
+  )}
+</BaseLayout>

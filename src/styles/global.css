@@ -1,0 +1,87 @@
+/* IBM Plex Sans */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/400-italic.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+
+/* IBM Plex Mono */
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/400-italic.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Color tokens ─────────────────────────────────────────── */
+:root {
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f9f9f9;
+  --color-bg-tertiary: #f0f0f0;
+  --color-border: #e5e5e5;
+  --color-text: #1a1a1a;
+  --color-text-muted: #6b7280;
+  --color-accent: #F54E00;
+  --color-accent-hover: #CC4100;
+  --color-tag-bg: #fff1ec;
+  --color-tag-text: #F54E00;
+  --color-code-bg: #f6f8fa;
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --header-height: 64px;
+}
+
+.dark {
+  --color-bg: #15171a;
+  --color-bg-secondary: #1c1f23;
+  --color-bg-tertiary: #252830;
+  --color-border: #2e3138;
+  --color-text: #f0f0f0;
+  --color-text-muted: #9ca3af;
+  --color-accent: #ff6e2e;
+  --color-accent-hover: #ff8e57;
+  --color-tag-bg: #2d1a0e;
+  --color-tag-text: #ff6e2e;
+  --color-code-bg: #1e2227;
+}
+
+/* ── Base resets ──────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+}
+
+/* ── Utility classes ──────────────────────────────────────── */
+@layer utilities {
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+
+  .bg-surface {
+    background-color: var(--color-bg-secondary);
+  }
+
+  .bg-surface-2 {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .border-subtle {
+    border-color: var(--color-border);
+  }
+}

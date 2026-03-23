@@ -1,0 +1,41 @@
+---
+import ThemeToggle from '../ui/ThemeToggle.astro';
+
+const navLinks = [
+  { href: '/', label: 'Home' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/about', label: 'About' },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="sticky top-0 z-40 w-full border-b border-[var(--color-border)] bg-[var(--color-bg)]/90 backdrop-blur">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 group">
+      <span class="text-xl font-bold text-[var(--color-accent)] group-hover:opacity-80 transition-opacity">
+        Wesley<span class="text-[var(--color-text)]">.dev</span>
+      </span>
+    </a>
+
+    <!-- Nav + Toggle -->
+    <div class="flex items-center gap-1">
+      <nav class="hidden sm:flex items-center gap-1 mr-2">
+        {navLinks.map(({ href, label }) => (
+          <a
+            href={href}
+            class={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              (href === '/' ? currentPath === '/' : currentPath.startsWith(href))
+                ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'
+            }`}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      <ThemeToggle />
+    </div>
+  </div>
+</header>

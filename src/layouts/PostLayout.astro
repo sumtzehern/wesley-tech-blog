@@ -1,0 +1,75 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TableOfContents from '../components/blog/TableOfContents.astro';
+import TagBadge from '../components/blog/TagBadge.astro';
+import { formatDate } from '../utils/posts';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  author: string;
+  tags: string[];
+  minutesRead?: string;
+  headings: Heading[];
+  ogImage?: string;
+}
+
+const { title, description, pubDate, updatedDate, author, tags, minutesRead, headings, ogImage } = Astro.props;
+---
+
+<BaseLayout title={`${title} — Wesley.dev`} description={description} ogImage={ogImage}>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+    <!-- Post header -->
+    <header class="mb-10 max-w-3xl">
+      <div class="flex flex-wrap gap-1.5 mb-4">
+        {tags.map((tag) => (
+          <TagBadge tag={tag} href={`/tags/${tag.toLowerCase().replace(/\s+/g, '-')}`} />
+        ))}
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold text-[var(--color-text)] leading-tight mb-4">
+        {title}
+      </h1>
+      <p class="text-lg text-[var(--color-text-muted)] mb-6 leading-relaxed">{description}</p>
+      <div class="flex items-center gap-4 text-sm text-[var(--color-text-muted)] pb-6 border-b border-[var(--color-border)]">
+        <span>{author}</span>
+        <span>·</span>
+        <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+        {minutesRead && (
+          <>
+            <span>·</span>
+            <span>{minutesRead}</span>
+          </>
+        )}
+        {updatedDate && (
+          <>
+            <span>·</span>
+            <span>Updated <time datetime={updatedDate.toISOString()}>{formatDate(updatedDate)}</time></span>
+          </>
+        )}
+      </div>
+    </header>
+
+    <!-- Two-column layout -->
+    <div class="flex gap-12 items-start">
+      <!-- Main content -->
+      <article class="flex-1 min-w-0 prose prose-lg dark:prose-invert max-w-none">
+        <slot />
+      </article>
+
+      <!-- Sticky ToC -->
+      {headings.length > 0 && (
+        <aside class="hidden xl:block w-56 shrink-0 sticky top-24 self-start">
+          <TableOfContents headings={headings} />
+        </aside>
+      )}
+    </div>
+  </div>
+</BaseLayout>

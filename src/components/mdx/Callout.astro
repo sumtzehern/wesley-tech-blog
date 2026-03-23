@@ -1,0 +1,55 @@
+---
+interface Props {
+  type?: 'info' | 'warning' | 'tip' | 'danger';
+  title?: string;
+}
+
+const { type = 'info', title } = Astro.props;
+
+const styles = {
+  info: {
+    border: 'border-blue-400/50',
+    bg: 'bg-blue-50 dark:bg-blue-950/30',
+    icon: '💡',
+    label: 'Info',
+    text: 'text-blue-800 dark:text-blue-200',
+    titleColor: 'text-blue-700 dark:text-blue-300',
+  },
+  tip: {
+    border: 'border-green-400/50',
+    bg: 'bg-green-50 dark:bg-green-950/30',
+    icon: '✅',
+    label: 'Tip',
+    text: 'text-green-800 dark:text-green-200',
+    titleColor: 'text-green-700 dark:text-green-300',
+  },
+  warning: {
+    border: 'border-yellow-400/50',
+    bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+    icon: '⚠️',
+    label: 'Warning',
+    text: 'text-yellow-800 dark:text-yellow-200',
+    titleColor: 'text-yellow-700 dark:text-yellow-300',
+  },
+  danger: {
+    border: 'border-red-400/50',
+    bg: 'bg-red-50 dark:bg-red-950/30',
+    icon: '🚨',
+    label: 'Danger',
+    text: 'text-red-800 dark:text-red-200',
+    titleColor: 'text-red-700 dark:text-red-300',
+  },
+};
+
+const s = styles[type];
+---
+
+<div class={`not-prose my-6 rounded-lg border-l-4 p-4 ${s.border} ${s.bg}`}>
+  <div class={`flex items-center gap-2 font-semibold text-sm mb-2 ${s.titleColor}`}>
+    <span aria-hidden="true">{s.icon}</span>
+    <span>{title ?? s.label}</span>
+  </div>
+  <div class={`text-sm leading-relaxed ${s.text} [&_a]:underline [&_code]:bg-black/10 [&_code]:px-1 [&_code]:rounded`}>
+    <slot />
+  </div>
+</div>
