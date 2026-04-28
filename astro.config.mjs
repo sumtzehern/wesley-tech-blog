@@ -5,6 +5,8 @@ import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
 import { remarkReadingTime } from './src/utils/reading-time.ts';
 
+import cloudflare from "@astrojs/cloudflare";
+
 /** @type {import('astro-expressive-code').AstroExpressiveCodeOptions} */
 const expressiveCodeOptions = {
   themes: ['github-dark', 'github-light'],
@@ -23,13 +25,17 @@ const expressiveCodeOptions = {
 
 export default defineConfig({
   site: 'https://wesleysum.dev',
+
   markdown: {
     remarkPlugins: [remarkReadingTime],
   },
+
   integrations: [
     expressiveCode(expressiveCodeOptions),
     mdx(),
     tailwind({ applyBaseStyles: false }),
     sitemap(),
   ],
+
+  adapter: cloudflare()
 });
