@@ -1,0 +1,137 @@
+---
+title: "CDN and the AI Era: The Infrastructure Layer Most Teams Ignore"
+description: "CDN is no longer just a cache for static files. In the AI era, it determines whether your product is fast, secure, and scalable for enterprise customers worldwide."
+pubDate: 2026-04-29
+author: "Wesley Sum"
+tags: ["Enterprise", "Systems", "AI"]
+featured: false
+draft: false
+---
+
+The teams shipping fast AI products in 2026 are not just optimising their models. They are treating CDN architecture as a first-class engineering decision.
+
+Most engineers think of a CDN as a place to serve images and CSS faster. That mental model is 10 years out of date. In an AI-powered system, the CDN layer is where latency is won or lost, where attack surface is controlled, and where global scale becomes possible without rewriting your backend.
+
+---
+
+## What a CDN actually does
+
+CDN stands for Content Delivery Network. At its core, it is a globally distributed network of servers (called Points of Presence, or PoPs) that sit between your origin server and your users.
+
+When a user makes a request, it hits the nearest PoP instead of travelling all the way to your origin. The PoP either serves a cached response immediately, or forwards the request to origin and caches the result for the next user.
+
+The result: lower latency, less load on your origin, and a system that scales horizontally without you doing anything.
+
+Traditional use cases:
+- Serving static assets (JS, CSS, images)
+- Caching API responses
+- DDoS mitigation
+- SSL termination
+
+These still apply. But AI changes the problem significantly.
+
+---
+
+## How AI changes the CDN equation
+
+### 1. Inference latency is now user-facing
+
+In a traditional web app, a slow database query might add 50ms. Users rarely notice.
+
+In an AI-powered app, inference calls to a model can take 500ms to 3 seconds. Every millisecond of network overhead compounds the problem.
+
+If your AI backend lives in `us-east-1` and your user is in Singapore, you are adding 200ms of round-trip before the model even starts generating. That is not a model problem. That is a network architecture problem.
+
+The solution is edge inference: running AI workloads at CDN-level PoPs instead of a single cloud region. Cloudflare Workers AI, AWS CloudFront Functions, Tencent Edge Functions and similar services now allow lightweight inference to happen close to the user.
+
+For heavier models that cannot run at the edge, the CDN still helps by routing the request to the nearest inference region rather than defaulting to a single origin.
+
+### 2. AI responses can be cached, but most teams do not
+
+This is the most overlooked optimisation in AI systems.
+
+Not every AI response is unique. If 500 users ask your support bot "how do I reset my password?", you do not need to call the model 500 times. A semantically equivalent cached response served from the CDN layer is faster, cheaper, and identical in quality.
+
+What you can cache at the CDN layer:
+- Responses to common queries (exact match or semantic hash)
+- Embedding vectors for frequently accessed documents
+- Model output for deterministic prompts (temperature 0)
+- Streamed responses using stale-while-revalidate patterns
+
+What you cannot cache:
+- Personalised or session-specific responses
+- Responses that depend on real-time data
+- Any response where freshness is a hard requirement
+
+The key is designing your AI endpoints with cacheability in mind from the start. Add `Cache-Control` headers, use surrogate keys for invalidation, and separate cacheable from non-cacheable endpoints explicitly.
+
+### 3. AI endpoints are expensive attack surfaces
+
+A standard web endpoint that gets hit with a DDoS costs you availability. An AI endpoint that gets hit with a DDoS costs you availability and money, because every request triggers an inference call.
+
+A single inference call on a large model can cost $0.01 to $0.10. An unprotected endpoint receiving 100,000 malicious requests costs you $1,000 to $10,000 before you notice.
+
+The CDN layer is your first line of defence:
+- Rate limiting at the edge, before requests reach your origin
+- Bot detection and challenge pages
+- IP allowlisting for enterprise customers
+- Token bucket algorithms per user or API key
+- Anomaly detection on request patterns
+
+Enterprise customers will ask about this directly. They want to know your AI endpoints are protected before they send their data through them.
+
+---
+
+## What enterprise customers care about
+
+When you sell AI products to enterprise, CDN architecture comes up in two contexts: performance SLAs and data residency.
+
+**Performance SLAs** — Enterprise contracts often include latency guarantees. "Response within 2 seconds for 99th percentile requests" is a common requirement. Without a CDN strategy, meeting that guarantee for globally distributed users is nearly impossible from a single cloud region.
+
+**Data residency** — Enterprise customers in the EU, healthcare, and financial services have strict rules about where data can travel. A CDN with configurable region locking lets you enforce that AI requests from EU users never leave EU infrastructure. Without that control, compliance becomes a conversation stopper.
+
+---
+
+## A practical architecture for AI systems
+
+Here is a starting point for how to layer CDN into an AI product:
+
+```
+User Request
+    │
+    ▼
+CDN Edge (PoP closest to user)
+    ├── Cache hit? → Return cached response immediately
+    ├── Rate limit exceeded? → Reject at edge
+    ├── Bot detected? → Challenge or block
+    └── Cache miss → Forward to origin
+            │
+            ▼
+        AI Gateway / API Layer
+            ├── Auth + API key validation
+            ├── Prompt sanitisation
+            ├── Route to nearest inference region
+            └── Call model
+                    │
+                    ▼
+                Model Response
+                    │
+            ← Cache response at edge
+            ← Return to user
+```
+
+Key decisions in this architecture:
+- **What gets cached and for how long** — define TTLs per endpoint type
+- **Where rate limiting lives** — edge is faster and cheaper than origin
+- **Which regions are allowed** — enforce data residency at the CDN layer
+- **How cache invalidation works** — use surrogate keys, not URL-based purging
+
+---
+
+## Final thoughts
+
+CDN is infrastructure that most teams set up once and forget. In the AI era, it is a competitive advantage.
+
+The teams that get this right serve responses faster, spend less on inference, survive traffic spikes, and close enterprise deals because they can answer data residency and SLA questions with confidence.
+
+Treat the CDN layer as part of your AI system design, not an afterthought you bolt on before launch.
