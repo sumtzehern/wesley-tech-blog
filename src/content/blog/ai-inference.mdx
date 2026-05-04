@@ -1,0 +1,145 @@
+---
+title: "AI Inference: Why Memory Bandwidth Is the Real Bottleneck"
+description: "Every meaningful optimization in modern AI inference — quantization, batching, KV caching — targets the same constraint: memory bandwidth, not compute."
+pubDate: 2026-05-03
+author: "Wesley Sum"
+tags: ["Machine Learning", "AI", "Systems", "Infrastructure"]
+featured: false
+draft: true
+---
+
+Every meaningful optimization in modern AI inference targets the same bottleneck: memory bandwidth. Quantization, batching, and KV caching all exist to move less data, not to run faster math.
+
+Here is why that is true, and what it means in practice.
+
+## The Scale Problem
+
+Six years ago, serving a model for inference meant loading it onto a single GPU. That era is over.
+
+Model parameters grew from under 1 billion in 2020 to over 200 trillion by 2026. Context windows expanded from 2,000 tokens to 1 million. GPT-1 was 117M parameters. GPT-2 was 1.5B. Modern frontier models operate at a scale that makes those numbers look like prototypes.
+
+The practical consequence is memory. Take a model around 2 trillion parameters — quantized to INT4. That is roughly 1TB of VRAM just to hold the weights. A single NVIDIA R100 has 288GB of VRAM. You need four of them before the model fits at all, before you serve a single request.
+
+This is why inference serving shifted from replication to parallelism. In the old world, you spun up more copies of a model across GPUs to handle more traffic. Now the model itself requires a cluster to load. The first problem you solve is fitting it, not scaling it.
+
+## The Inference Pipeline
+
+Once a model is loaded, inference runs in three phases: prefill, decode, and serving.
+
+**Prefill** processes the entire input prompt in one forward pass, computing attention over every token at once. It is compute-intensive — the GPU is doing a lot of matrix multiplication up front.
+
+**Decode** generates the output one token at a time. Each step attends to all previous tokens, and because you are generating sequentially, you cannot parallelize across the output. This phase is memory-bandwidth-intensive.
+
+**Serving** is the layer on top: batching requests, scheduling work, routing tokens, managing memory.
+
+The memory hierarchy that underlies all of this looks like this:
+
+```
+GPU VRAM (fastest, smallest)
+     |
+CPU RAM (slower, larger)
+     |
+SSD (slowest, largest)
+```
+
+Weights typically live on disk and are memory-mapped (mmap) into CPU RAM. When the model is loaded, the runtime moves weights from RAM into VRAM. Once weights are in VRAM, they stay there — but VRAM is competitive space. Every request needs to store intermediate activations and KV cache alongside the weights.
+
+The bottleneck is not arithmetic throughput. It is how fast you can move data through that hierarchy. Faster GPUs help at the margins. Reducing what you move helps far more.
+
+## Quantization
+
+Quantization reduces the numerical precision of model weights so they take up less space and move through memory faster.
+
+A standard trained model stores weights as 32-bit floating point numbers (FP32). Each weight is four bytes. A 7B-parameter model in FP32 occupies 28GB of VRAM. Quantize it to 8-bit integers (INT8) and it drops to 7GB. Quantize to 4-bit (INT4) and it drops to 3.5GB.
+
+```
+7B model:
+FP32  →  28 GB
+INT8  →   7 GB
+INT4  →   3.5 GB
+```
+
+The key insight is that neural networks are surprisingly tolerant of small numerical errors. You do not need full precision for inference. A weight that was `0.18374291` stored as `0.18` — or as the integer `18` — produces outputs that are nearly indistinguishable from full precision, especially after fine-tuning or calibration.
+
+Think of it like JPEG compression for weights. The original has massive detail. The compressed version has tiny imperfections. The model, like the human eye, absorbs the noise without noticing.
+
+Quantization speeds up inference because loading fewer bytes from VRAM is faster than loading more bytes, regardless of how fast the matrix multiplication runs. The bottleneck moves, the speedup follows.
+
+### Two main approaches
+
+**Post-Training Quantization (PTQ)** trains the model normally, then quantizes the weights afterward. It is the most common approach for LLM inference because it requires no retraining.
+
+Common PTQ methods:
+- **GPTQ** — one-shot quantization using second-order information to minimize error
+- **AWQ** (Activation-aware Weight Quantization) — identifies which weights are most important to accuracy and quantizes them more carefully
+- **GGUF** — the format used by llama.cpp, supports mixed-precision quantization per layer
+- **bitsandbytes** — library-level INT8/INT4 quantization compatible with HuggingFace
+
+PTQ is fast and cheap. The tradeoff is a small accuracy loss, which grows as you push to lower bit widths.
+
+**Quantization-Aware Training (QAT)** simulates quantization effects during training so the model learns to compensate for reduced precision. It produces better accuracy than PTQ at the same bit width, but requires retraining from scratch or from a checkpoint. Common in mobile and embedded models where INT4 or INT2 is mandatory.
+
+### What gets quantized
+
+Not all model components are quantized equally:
+- **Weights** — the primary target, always quantized in production
+- **Activations** — intermediate tensors during the forward pass; harder to quantize because their range varies per input
+- **KV cache** — the cached attention states; quantizing this frees significant memory at long context lengths
+- **Gradients** — only relevant during QAT, not standard inference
+
+### Sensitive layers
+
+Not every layer tolerates quantization equally. Attention projection layers, output heads, and normalization layers often lose accuracy badly when quantized aggressively. Methods like AWQ selectively quantize some layers to INT2 while keeping others at INT8, based on activation statistics. This is why a mixed-precision INT4 model can outperform a uniform INT4 model at the same memory footprint.
+
+### What happens during inference
+
+Without quantization, the runtime loads FP32 weights, feeds them directly into matrix multiplication, and the memory pressure is constant.
+
+With quantization, the runtime loads INT4 weights, dequantizes them on the fly to a higher precision for the matrix multiplication, then discards the result. Modern GPU kernels fuse dequantization and matrix multiplication into a single operation so there is no overhead from the extra step — only the reduction in memory traffic.
+
+## Batching and KV Caching
+
+Quantization reduces the size of what you load. Batching and KV caching reduce how often you load it.
+
+### Batching
+
+Every forward pass through the model — GEMM, layer normalization, softmax, attention — requires loading weights from VRAM. If you serve eight requests sequentially, you load the weights eight times. If you serve them as a batch, you load them once.
+
+Batching amortizes the cost of the memory load across multiple requests. The compute runs once, the results fan out to each request in the batch. At high batch sizes, GPU utilization rises and cost-per-token drops sharply.
+
+The challenge is latency. Waiting to fill a batch before processing it adds queuing delay. Modern inference servers use **continuous batching** (also called in-flight batching): instead of waiting for a fixed batch to complete, the server inserts new requests into the batch mid-generation as slots free up. This keeps GPU utilization high without sacrificing latency for individual requests.
+
+### KV Cache
+
+Transformer attention computes keys and values for every token in the context. During autoregressive decoding, you generate one token at a time — but you need the keys and values from every previous token to compute attention for the next one.
+
+Recomputing those keys and values from scratch at every step would be enormously wasteful. Instead, you cache them. This is the KV cache: a buffer of the key and value tensors for every token in every active sequence.
+
+The problem is that KV cache does not scale nicely:
+- Memory usage grows linearly with sequence length
+- Memory usage grows linearly with batch size
+- At 1M-token context windows, the KV cache for a single sequence can rival the size of the model weights
+
+This is why KV cache management is a first-class systems problem. **PagedAttention** (used in vLLM) manages KV cache memory like virtual memory in an OS — allocating it in non-contiguous blocks to eliminate fragmentation and allow sharing across requests with common prefixes. **RadixAttention** (used in SGLang) takes this further, sharing KV cache blocks between requests that share a prefix such as a system prompt.
+
+## Inference Frameworks
+
+Four frameworks dominate production LLM inference today:
+
+**vLLM** is the most widely used open-source inference engine. Its core innovation is PagedAttention, which eliminates KV cache memory fragmentation by allocating cache in fixed-size pages rather than contiguous blocks. It also pioneered continuous batching for LLMs. Good default choice for most deployment scenarios.
+
+**SGLang** (Structured Generation Language) focuses on workloads that involve structured outputs or multi-turn agentic loops. Its RadixAttention reuses KV cache across requests sharing a common prefix, which dramatically reduces compute when many requests share the same system prompt or few-shot examples.
+
+**TensorRT-LLM** is NVIDIA's library for optimizing LLM inference specifically on NVIDIA GPUs. It applies aggressive kernel fusion, supports INT4/INT8/FP8 quantization, and generates highly optimized CUDA kernels for specific model architectures. Highest raw throughput on NVIDIA hardware, at the cost of more complex setup and hardware lock-in.
+
+**NVIDIA Dynamo** is NVIDIA's newer inference serving framework, designed for disaggregated prefill/decode serving. Because prefill is compute-bound and decode is memory-bandwidth-bound, Dynamo routes them to different GPU pools — allowing each to be optimized independently. Relevant at very large scale where the two phases have meaningfully different hardware requirements.
+
+## Putting It Together
+
+The mental model that ties all of this together:
+
+Inference at scale is a memory problem. The model is too large for one GPU. The context is too long for naive KV cache management. The throughput you need requires batching to amortize memory loads.
+
+Every technique in this stack, quantization to shrink weights, batching to share memory loads, KV caching to avoid recomputation, PagedAttention to manage fragmentation, is solving the same underlying problem: you have a fixed amount of memory bandwidth, and you need to do more with it.
+
+Faster compute helps at the margin. But the engineers who ship production inference at scale are spending most of their time thinking about memory, not FLOPs.
